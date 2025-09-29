@@ -15,7 +15,7 @@ import os
 import time
 import shutil
 import subprocess
-from jinja2 import utils
+from markupsafe import escape
 from .notification import Notification
 from .config import Config, get, daily_run_data, code_path
 from .log import logger
@@ -32,7 +32,7 @@ class Process(object):
         self.rule_object = rule_object
 
     def process(self, maybe_mistake=False):
-        logger.info(f'Process count: {len(self.content)}')
+        logger.info('Process count: {count}'.format(count=len(self.content)))
         ret_mail = self._send_mail(maybe_mistake)
         if ret_mail:
             for i, v in self.content.items():
@@ -53,20 +53,16 @@ class Process(object):
             title = '〔GSIL〕MB_MT '
         else:
             title = '〔GSIL〕'
-        subject = f'{title}[{self.rule_object.types}] [{self.rule_object.corp}] {len(self.content)}'
+        subject = '{title}[{types}] [{rule_name}] {count}'.format(title=title, types=self.rule_object.types, rule_name=self.rule_object.corp, count=len(self.content))
         to = get('mail', 'to')
         cc = get('mail', 'cc')
-        html = '<h3>Rule: {rule_regex} Count: {count} Datetime: {datetime}</h3>'.format(
-            rule_regex=self.rule_object.keyword, datetime=time.strftime("%Y-%m-%d %H:%M:%S"), count=len(self.content))
+        html = '<h3>Rule: {rule_regex} Count: {count} Datetime: {datetime}</h3>'.format(rule_regex=self.rule_object.keyword, datetime=time.strftime("%Y-%m-%d %H:%M:%S"), count=len(self.content))
         for i, v in self.content.items():
-            html += '<h3>({i})<a href="{url}">{hash}</a> {repository}/{path}</h3>'.format(i=i, url=v['url'],
-                                                                                          hash=v['hash'][:6],
-                                                                                          repository=v['repository'],
-                                                                                          path=v['path'])
+            html += '<h3>({i})<a href="{url}">{hash}</a> {repository}/{path}</h3>'.format(i=i, url=v['url'], hash=v['hash'][:6], repository=v['repository'], path=v['path'])
             if len(v['match_codes']) > 0:
                 code = ''
                 for c in v['match_codes']:
-                    code += '{c}<br>'.format(c=utils.escape(c))
+                    code += '{c}<br>'.format(c=escape(c))
                 html += '<code>{code}</code><hr>'.format(code=code)
             self._save_file(v['hash'], v['code'])
         html += '</table></body>'
@@ -97,7 +93,7 @@ def send_running_data_report():
     for l in data['list']:
         content += l
     ret = Notification(subject, to).notification(content)
-    logger.info(f'Ret: {ret}')
+    logger.info('Ret: {ret}'.format(ret=ret))
     return ret
 
 
